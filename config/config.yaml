@@ -1,0 +1,118 @@
+# Telegram Market Analysis Bot Configuration
+
+# Telegram Configuration
+telegram:
+  bot_token: "8907648387:AAGTyvWfLjjWdeSNCvaw62680AWsoigM_b0"
+  chat_id: "597082574"
+  admin_id: "597082574"
+  read_timeout: 30
+  write_timeout: 30
+  connect_timeout: 30
+
+# Binance Configuration (CCXT)
+binance:
+  api_key: "YOUR_BINANCE_API_KEY"
+  api_secret: "YOUR_BINANCE_API_SECRET"
+  sandbox: false  # Set to true for testnet
+  timeout: 10000  # milliseconds
+
+# Market Analysis Settings
+market:
+  symbols:
+    - "BTC/USDT"
+    - "ETH/USDT"
+    - "ADA/USDT"
+  default_timeframe: "1h"
+  update_interval: 300  # seconds (5 minutes)
+
+# Indicators Configuration
+indicators:
+  ema:
+    periods: [20, 50, 200]
+  rsi:
+    period: 14
+    overbought: 70
+    oversold: 30
+  macd:
+    fast_period: 12
+    slow_period: 26
+    signal_period: 9
+  adx:
+    period: 14
+    strong_trend: 25
+  atr:
+    period: 14
+  bollinger_bands:
+    period: 20
+    std_dev: 2
+  vwap:
+    enabled: true
+
+# Multi-Timeframe Analysis
+multi_timeframe:
+  enabled: true
+  timeframes:
+    trend: "15m"    # Long-term trend
+    setup: "5m"     # Setup timeframe
+    confirmation: "1m"  # Entry confirmation
+
+# Signal Confidence Settings
+signal_confidence:
+  min_score: 60  # Minimum confidence score (0-100)
+  weights:
+    ema_trend: 0.20
+    rsi_divergence: 0.15
+    macd_crossover: 0.15
+    adx_strength: 0.15
+    bollinger_bands: 0.15
+    volume_profile: 0.10
+    pattern_recognition: 0.10
+
+# Database Configuration
+database:
+  path: "data/trades.db"
+  backup_interval: 3600  # seconds
+  max_size: "100MB"
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+  console: true
+  file: true
+  file_path: "logs/bot.log"
+
+# Trading Settings
+trading:
+  dry_run: true  # Test mode without real trades
+  min_volume_usd: 100000  # Minimum daily volume
+  max_spread_percent: 0.5
+  risk_reward_ratio: 2.0
+
+# Feature Flags
+features:
+  alerts: true
+  backtesting: true
+  pattern_recognition: true
+  support_resistance: true
+  multi_timeframe_analysis: true
+  signal_notifications: true
+
+# Notification Settings
+notifications:
+  send_alerts: true
+  alert_threshold: 70  # Confidence score threshold
+  quiet_hours:
+    enabled: false
+    start: "22:00"
+    end: "08:00"
+
+# Performance Settings
+performance:
+  cache_enabled: true
+  cache_ttl: 300  # seconds
+  max_workers: 4
+  batch_size: 100
+  rate_limit: 60  # requests per minute

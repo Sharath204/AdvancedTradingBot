@@ -2,9 +2,9 @@
 
 # Telegram Configuration
 telegram:
-  bot_token: "YOUR_TELEGRAM_BOT_TOKEN_HERE"
-  chat_id: "YOUR_CHAT_ID_HERE"
-  admin_id: "YOUR_ADMIN_ID_HERE"
+  bot_token: "8907648387:AAGTyvWfLjjWdeSNCvaw62680AWsoigM_b0"
+  chat_id: "597082574"
+  admin_id: "597082574"
   read_timeout: 30
   write_timeout: 30
   connect_timeout: 30

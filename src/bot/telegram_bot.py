@@ -2,7 +2,13 @@
 Telegram bot main class.
 """
 
-from telegram import Update, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -16,6 +22,7 @@ from src.data.market_data import MarketData
 from src.bot.handlers import CommandHandlers
 from src.utils.exceptions import TelegramError
 
+
 logger = get_logger(__name__)
 
 
@@ -24,19 +31,21 @@ class TelegramBot:
     Telegram bot main class.
     """
 
+
     def __init__(self, config: Config):
 
         self.config = config
         self.telegram_config = config.get_telegram_config()
 
-        # Removed Binance configuration
+        # No Binance
         self.market_data = MarketData()
 
         self.handlers = CommandHandlers(
             self.market_data
         )
 
-        self.application: Application | None = None
+        self.application = None
+
 
 
     async def start(
@@ -45,22 +54,23 @@ class TelegramBot:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-        welcome_message = """
-🤖 *Welcome to OTC Signal Bot!*
+        message = """
+🤖 *Welcome to OTC Signal Bot*
 
-Select OTC pairs and get analysis signals.
+Get market analysis signals.
 
 Commands:
 
 /analyze - Select OTC pair
-/help
-/status
+/status - Bot status
+/help - Help
 """
 
         await update.message.reply_text(
-            welcome_message,
+            message,
             parse_mode="Markdown"
         )
+
 
 
     async def analyze(
@@ -69,19 +79,29 @@ Commands:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-        keyboard = []
-
         pairs = self.handlers.get_otc_pairs()
 
-        for pair in pairs:
-            keyboard.append(
-                [
-                    InlineKeyboardButton(
-                        pair,
-                        callback_data=f"analyze_{pair}"
-                    )
-                ]
+        keyboard = []
+
+        row = []
+
+        for index, pair in enumerate(pairs, start=1):
+
+            row.append(
+                InlineKeyboardButton(
+                    pair,
+                    callback_data=f"analyze_{pair}"
+                )
             )
+
+            # 2 buttons per row
+            if index % 2 == 0:
+                keyboard.append(row)
+                row = []
+
+
+        if row:
+            keyboard.append(row)
 
 
         reply_markup = InlineKeyboardMarkup(
@@ -90,7 +110,7 @@ Commands:
 
 
         await update.message.reply_text(
-            "📊 Select OTC pair:",
+            "📊 Select OTC Pair:",
             reply_markup=reply_markup
         )
 
@@ -107,6 +127,12 @@ Commands:
         await query.answer()
 
 
+        if not query.data.startswith(
+            "analyze_"
+        ):
+            return
+
+
         symbol = query.data.replace(
             "analyze_",
             ""
@@ -114,7 +140,7 @@ Commands:
 
 
         await query.edit_message_text(
-            f"📊 Analyzing {symbol}..."
+            f"⏳ Analyzing {symbol}..."
         )
 
 
@@ -136,7 +162,7 @@ Commands:
             logger.exception(e)
 
             await query.message.reply_text(
-                f"❌ Error analyzing {symbol}"
+                f"❌ Error analyzing {symbol}\n{e}"
             )
 
 
@@ -147,10 +173,10 @@ Commands:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-        msg = await self.handlers.handle_help()
+        message = await self.handlers.handle_help()
 
         await update.message.reply_text(
-            msg,
+            message,
             parse_mode="Markdown"
         )
 
@@ -162,10 +188,10 @@ Commands:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-        msg = await self.handlers.handle_status()
+        message = await self.handlers.handle_status()
 
         await update.message.reply_text(
-            msg,
+            message,
             parse_mode="Markdown"
         )
 
@@ -177,7 +203,10 @@ Commands:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-        logger.exception(context.error)
+        logger.exception(
+            context.error
+        )
+
 
         if isinstance(update, Update) and update.message:
 
@@ -197,8 +226,9 @@ Commands:
 
 
             if not token:
+
                 raise TelegramError(
-                    "Bot token not configured"
+                    "Telegram bot token missing"
                 )
 
 
@@ -241,7 +271,6 @@ Commands:
             )
 
 
-            # OTC button click handler
             self.application.add_handler(
                 CallbackQueryHandler(
                     self.otc_pair_selected,
@@ -256,7 +285,7 @@ Commands:
 
 
             logger.info(
-                "Telegram application created"
+                "Telegram application initialized"
             )
 
 
@@ -273,6 +302,7 @@ Commands:
         try:
 
             if self.application is None:
+
                 await self.initialize()
 
 
@@ -306,7 +336,6 @@ Commands:
 
             await self.application.start()
 
-
             await self.application.updater.start_polling()
 
 
@@ -332,6 +361,7 @@ Commands:
             await self.application.stop()
 
             await self.application.shutdown()
+
 
             logger.info(
                 "Bot stopped"

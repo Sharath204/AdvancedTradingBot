@@ -2,7 +2,7 @@
 Market data fetching via CCXT.
 """
 
-import ccxt
+
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta

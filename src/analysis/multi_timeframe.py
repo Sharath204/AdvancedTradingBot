@@ -54,19 +54,17 @@ class MultiTimeframeAnalysis:
     @staticmethod
     def _analyze_timeframe(df: pd.DataFrame) -> Dict[str, Any]:
 
-        # -----------------------------
-        # Calculate Indicators
-        # -----------------------------
+        # Calculate indicators
         emas = MovingAverages.calculate_ema_trend(df)
 
-        # FIX: Use close price series
+        # Indicators using close price
         rsi = Momentum.rsi(df["close"])
         macd_line, signal_line, histogram = Momentum.macd(df["close"])
+        upper_bb, middle_bb, lower_bb = Volatility.bollinger_bands(df["close"])
 
-        # Full dataframe indicators
+        # Indicators using OHLC
         adx = Momentum.adx(df)
         atr = Volatility.atr(df)
-        upper_bb, middle_bb, lower_bb = Volatility.bollinger_bands(df)
 
         latest = len(df) - 1
 
@@ -93,34 +91,19 @@ class MultiTimeframeAnalysis:
             rsi_signal = "neutral"
 
         return {
-
             "trend": trend,
-
             "current_price": current_price,
-
             "rsi": current_rsi,
-
             "adx": current_adx,
-
             "atr": current_atr,
-
             "rsi_signal": rsi_signal,
-
             "ema_20": ema_20,
-
             "ema_50": ema_50,
-
             "ema_200": ema_200,
-
             "macd": float(macd_line.iloc[latest]),
-
             "signal_line": float(signal_line.iloc[latest]),
-
             "histogram": float(histogram.iloc[latest]),
-
             "bb_upper": float(upper_bb.iloc[latest]),
-
             "bb_middle": float(middle_bb.iloc[latest]),
-
             "bb_lower": float(lower_bb.iloc[latest]),
         }

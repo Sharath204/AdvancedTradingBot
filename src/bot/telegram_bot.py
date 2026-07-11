@@ -167,23 +167,21 @@ class TelegramBot:
         except Exception as e:
             raise TelegramError(f"Failed to initialize bot: {e}")
 
-    async def start_polling(self) -> None:
-        """
-        Start bot polling.
+ async def start_polling(self) -> None:
+    try:
+        if not self.application:
+            await self.initialize()
 
-        Raises:
-            TelegramError: If polling fails
-        """
-        try:
-            if not self.application:
-                await self.initialize()
+        logger.info("Starting bot polling...")
 
-            logger.info("Starting bot polling...")
-            await self.application.start()
-            await self.application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-            logger.info("Bot polling started")
-        except Exception as e:
-            raise TelegramError(f"Failed to start polling: {e}")
+        await self.application.initialize()
+        await self.application.start()
+        await self.application.updater.start_polling()
+
+        logger.info("Bot polling started")
+
+    except Exception as e:
+        raise TelegramError(f"Failed to start polling: {e}")
 
     async def stop(self) -> None:
         """

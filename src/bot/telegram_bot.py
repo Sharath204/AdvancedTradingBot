@@ -7,15 +7,12 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
 )
 from src.utils.logger import get_logger
 from src.utils.config import Config
 from src.data.market_data import MarketData
 from src.bot.handlers import CommandHandlers
 from src.utils.exceptions import TelegramError
-import logging
 
 logger = get_logger(__name__)
 
@@ -26,167 +23,135 @@ class TelegramBot:
     """
 
     def __init__(self, config: Config):
-        """
-        Initialize Telegram bot.
-
-        Args:
-            config: Configuration instance
-        """
         self.config = config
         self.telegram_config = config.get_telegram_config()
+
         self.market_data = MarketData(
             exchange_name="binance",
             config=config.get_binance_config(),
         )
+
         self.handlers = CommandHandlers(self.market_data)
-        self.application: Application = None
+        self.application: Application | None = None
 
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """
-        Handle /start command.
-
-        Args:
-            update: Telegram update
-            context: Telegram context
-        """
+    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         welcome_message = """
-        🤖 **Welcome to Market Analysis Bot!**
+🤖 *Welcome to Market Analysis Bot!*
 
-        I can analyze cryptocurrency markets in real-time using advanced technical indicators.
+I can analyze cryptocurrency markets in real-time.
 
-        Use /help to see available commands.
-        Use /analyze <SYMBOL> to analyze a trading pair.
+Commands:
+/help
+/analyze BTC/USDT
+/status
+"""
+        await update.message.reply_text(
+            welcome_message,
+            parse_mode="Markdown",
+        )
 
-        Example: /analyze BTC/USDT
-        """
-        await update.message.reply_text(welcome_message, parse_mode="Markdown")
-        logger.info(f"User {update.effective_user.id} started the bot")
-
-    async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """
-        Handle /analyze command.
-
-        Args:
-            update: Telegram update
-            context: Telegram context
-        """
+    async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not context.args:
             await update.message.reply_text(
-                "❌ Please provide a symbol. Example: /analyze BTC/USDT"
+                "❌ Please provide a symbol.\nExample: /analyze BTC/USDT"
             )
             return
 
         symbol = context.args[0].upper()
 
-        # Validate symbol format
         if "/" not in symbol:
             symbol = f"{symbol}/USDT"
 
         try:
             await update.message.reply_text(f"📊 Analyzing {symbol}...")
-            analysis_message = await self.handlers.handle_analyze(symbol)
-            await update.message.reply_text(analysis_message, parse_mode="Markdown")
-            logger.info(f"Analysis completed for {symbol}")
+
+            result = await self.handlers.handle_analyze(symbol)
+
+            await update.message.reply_text(
+                result,
+                parse_mode="Markdown",
+            )
+
         except Exception as e:
-            logger.error(f"Analysis error: {e}")
+            logger.exception(e)
             await update.message.reply_text(
-                f"❌ Error analyzing {symbol}: {str(e)}"
+                f"❌ Error analyzing {symbol}"
             )
 
-    async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """
-        Handle /help command.
+    async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        msg = await self.handlers.handle_help()
+        await update.message.reply_text(msg, parse_mode="Markdown")
 
-        Args:
-            update: Telegram update
-            context: Telegram context
-        """
-        help_message = await self.handlers.handle_help()
-        await update.message.reply_text(help_message, parse_mode="Markdown")
-        logger.info("Help command requested")
+    async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        msg = await self.handlers.handle_status()
+        await update.message.reply_text(msg, parse_mode="Markdown")
 
-    async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """
-        Handle /status command.
+    async def error_handler(self, update: object, context: ContextTypes.DEFAULT_TYPE):
+        logger.exception(context.error)
 
-        Args:
-            update: Telegram update
-            context: Telegram context
-        """
-        status_message = await self.handlers.handle_status()
-        await update.message.reply_text(status_message, parse_mode="Markdown")
-        logger.info("Status command requested")
-
-    async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """
-        Handle errors.
-
-        Args:
-            update: Telegram update
-            context: Telegram context
-        """
-        logger.error(f"Exception while handling an update: {context.error}")
-        if update and update.message:
+        if isinstance(update, Update) and update.message:
             await update.message.reply_text(
-                "❌ An error occurred. Please try again later."
+                "❌ Something went wrong."
             )
 
-    async def initialize(self) -> None:
-        """
-        Initialize the bot application.
-
-        Raises:
-            TelegramError: If bot initialization fails
-        """
+    async def initialize(self):
         try:
-            bot_token = self.telegram_config.get("bot_token")
-            if not bot_token:
+            token = self.telegram_config.get("bot_token")
+
+            if not token:
                 raise TelegramError("Bot token not configured")
 
-            self.application = Application.builder().token(bot_token).build()
+            self.application = (
+                Application.builder()
+                .token(token)
+                .build()
+            )
 
-            # Add command handlers
             self.application.add_handler(CommandHandler("start", self.start))
-            self.application.add_handler(CommandHandler("analyze", self.analyze))
             self.application.add_handler(CommandHandler("help", self.help))
             self.application.add_handler(CommandHandler("status", self.status))
+            self.application.add_handler(CommandHandler("analyze", self.analyze))
 
-            # Set commands for BotFather menu
-            commands = [
-                BotCommand("start", "Start the bot"),
-                BotCommand("analyze", "Analyze a symbol"),
-                BotCommand("help", "Show help"),
-                BotCommand("status", "Bot status"),
-            ]
-            await self.application.bot.set_my_commands(commands)
-
-            # Add error handler
             self.application.add_error_handler(self.error_handler)
 
-            logger.info("Telegram bot initialized successfully")
+            logger.info("Telegram application created")
+
         except Exception as e:
             raise TelegramError(f"Failed to initialize bot: {e}")
 
- async def start_polling(self) -> None:
-    try:
-        if not self.application:
-            await self.initialize()
+    async def start_polling(self):
+        try:
+            if self.application is None:
+                await self.initialize()
 
-        logger.info("Starting bot polling...")
+            logger.info("Initializing application...")
 
-        await self.application.initialize()
-        await self.application.start()
-        await self.application.updater.start_polling()
+            await self.application.initialize()
 
-        logger.info("Bot polling started")
+            commands = [
+                BotCommand("start", "Start bot"),
+                BotCommand("help", "Help"),
+                BotCommand("status", "Status"),
+                BotCommand("analyze", "Analyze market"),
+            ]
 
-    except Exception as e:
-        raise TelegramError(f"Failed to start polling: {e}")
+            await self.application.bot.set_my_commands(commands)
 
-    async def stop(self) -> None:
-        """
-        Stop the bot.
-        """
+            logger.info("Starting application...")
+
+            await self.application.start()
+
+            await self.application.updater.start_polling()
+
+            logger.info("Bot started successfully")
+
+        except Exception as e:
+            raise TelegramError(f"Failed to start polling: {e}")
+
+    async def stop(self):
         if self.application:
+            await self.application.updater.stop()
             await self.application.stop()
+            await self.application.shutdown()
+
             logger.info("Bot stopped")

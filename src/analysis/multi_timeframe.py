@@ -20,12 +20,6 @@ class MultiTimeframeAnalysis:
     """
 
     def __init__(self, market_data: MarketData):
-        """
-        Initialize multi-timeframe analysis.
-
-        Args:
-            market_data: MarketData instance
-        """
         self.market_data = market_data
 
     def analyze(
@@ -35,25 +29,13 @@ class MultiTimeframeAnalysis:
         setup_tf: str = "5m",
         confirmation_tf: str = "1m",
     ) -> Dict[str, Any]:
-        """
-        Perform multi-timeframe analysis.
 
-        Args:
-            symbol: Trading symbol
-            trend_tf: Trend timeframe
-            setup_tf: Setup timeframe
-            confirmation_tf: Confirmation timeframe
-
-        Returns:
-            Analysis results dictionary
-        """
         try:
-            # Get data for each timeframe
+
             trend_df = self.market_data.get_ohlcv(symbol, trend_tf)
             setup_df = self.market_data.get_ohlcv(symbol, setup_tf)
             confirmation_df = self.market_data.get_ohlcv(symbol, confirmation_tf)
 
-            # Analyze each timeframe
             trend_analysis = self._analyze_timeframe(trend_df)
             setup_analysis = self._analyze_timeframe(setup_df)
             confirmation_analysis = self._analyze_timeframe(confirmation_df)
@@ -63,58 +45,82 @@ class MultiTimeframeAnalysis:
                 "setup": setup_analysis,
                 "confirmation": confirmation_analysis,
             }
+
         except Exception as e:
-            raise AnalysisError(f"Multi-timeframe analysis failed: {e}")
+            raise AnalysisError(
+                f"Multi-timeframe analysis failed: {e}"
+            )
 
     @staticmethod
     def _analyze_timeframe(df: pd.DataFrame) -> Dict[str, Any]:
-        """
-        Analyze single timeframe.
 
-        Args:
-            df: OHLCV DataFrame
-
-        Returns:
-            Analysis results
-        """
-        # Calculate indicators
+        # -----------------------------
+        # Calculate Indicators
+        # -----------------------------
         emas = MovingAverages.calculate_ema_trend(df)
-        rsi = Momentum.rsi(df)
-        macd_line, signal_line, histogram = Momentum.macd(df)
+
+        # FIX: Use close price series
+        rsi = Momentum.rsi(df["close"])
+        macd_line, signal_line, histogram = Momentum.macd(df["close"])
+
+        # Full dataframe indicators
         adx = Momentum.adx(df)
         atr = Volatility.atr(df)
         upper_bb, middle_bb, lower_bb = Volatility.bollinger_bands(df)
 
-        # Get latest values
         latest = len(df) - 1
-        current_price = df["close"].iloc[latest]
-        current_rsi = rsi.iloc[latest]
-        current_adx = adx.iloc[latest]
-        current_atr = atr.iloc[latest]
 
-        # Determine trend
-        ema_20 = emas["ema_20"].iloc[latest]
-        ema_50 = emas["ema_50"].iloc[latest]
-        ema_200 = emas["ema_200"].iloc[latest]
-        trend = MovingAverages.get_trend_direction(ema_20, ema_50, ema_200)
+        current_price = float(df["close"].iloc[latest])
+        current_rsi = float(rsi.iloc[latest])
+        current_adx = float(adx.iloc[latest])
+        current_atr = float(atr.iloc[latest])
 
-        # Check overbought/oversold
-        rsi_signal = "overbought" if current_rsi > 70 else "oversold" if current_rsi < 30 else "neutral"
+        ema_20 = float(emas["ema_20"].iloc[latest])
+        ema_50 = float(emas["ema_50"].iloc[latest])
+        ema_200 = float(emas["ema_200"].iloc[latest])
+
+        trend = MovingAverages.get_trend_direction(
+            ema_20,
+            ema_50,
+            ema_200
+        )
+
+        if current_rsi > 70:
+            rsi_signal = "overbought"
+        elif current_rsi < 30:
+            rsi_signal = "oversold"
+        else:
+            rsi_signal = "neutral"
 
         return {
+
             "trend": trend,
+
             "current_price": current_price,
+
             "rsi": current_rsi,
+
             "adx": current_adx,
+
             "atr": current_atr,
+
             "rsi_signal": rsi_signal,
+
             "ema_20": ema_20,
+
             "ema_50": ema_50,
+
             "ema_200": ema_200,
-            "macd": macd_line.iloc[latest],
-            "signal_line": signal_line.iloc[latest],
-            "histogram": histogram.iloc[latest],
-            "bb_upper": upper_bb.iloc[latest],
-            "bb_middle": middle_bb.iloc[latest],
-            "bb_lower": lower_bb.iloc[latest],
+
+            "macd": float(macd_line.iloc[latest]),
+
+            "signal_line": float(signal_line.iloc[latest]),
+
+            "histogram": float(histogram.iloc[latest]),
+
+            "bb_upper": float(upper_bb.iloc[latest]),
+
+            "bb_middle": float(middle_bb.iloc[latest]),
+
+            "bb_lower": float(lower_bb.iloc[latest]),
         }
